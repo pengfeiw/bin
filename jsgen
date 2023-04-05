@@ -1,0 +1,68 @@
+#!/bin/bash
+
+declare -A templates=(
+    [react]=react
+    [typescript]=typescript
+)
+
+declare -A repository=(
+    [react]="git@github.com:pengfeiw/react-template.git"
+    [typescript]="git@github.com:pengfeiw/typescript-template.git"
+)
+
+template="react"
+projectName=""
+
+function usage() {
+    echo "Usage: jsgen [-ht]"
+    echo "-h                    show help information"
+    echo "-t <template name>    generate a project template with specific template. supported template: ${templates[@]}"
+    echo "-n <project name>     specify project name."
+}
+
+function downloadProject() {
+    projectAddr=${repository[$template]}
+
+    echo ">> start download $template project: $projectAddr"
+    git clone  $projectAddr $projectName
+    rm -rf ./$projectName/.git*
+
+    echo ">> start install dependencies:"
+    if [[ -z "$projectName" ]]; then
+        projectName=${projectAddr##*/}
+        projectName=${projectName%.git}
+    fi
+
+    npm install
+    
+    echo "finish!"
+}
+
+while getopts 'hn:t:' arg; do
+    case "${arg}" in
+        h)
+            usage
+            exit 0
+            ;;
+        t)
+            if [[ -z "${templates[${OPTARG,,}]}" ]]; then
+                echo "sorry, doesn't supported template: $OPTARG"
+                echo "you can select other templates: ${templates[@]}"
+                exit 1
+            else
+                template="${OPTARG,,}"
+            fi
+            ;;
+        n)
+            projectName=$OPTARG
+            ;;
+        ?)
+            echo "Error: Invalid option"
+            echo 
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+downloadProject

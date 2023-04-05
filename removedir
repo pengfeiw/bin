@@ -1,0 +1,5 @@
+#!/bin/bash
+# 在当前目录中递归删除指定名称的目录
+
+DIR=$1
+find . -name $DIR -type d | xargs rm -rf

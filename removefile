@@ -1,0 +1,5 @@
+#!/bin/bash
+# 在当前目录中递归查找指定名称的文件并删除
+
+FILE=$1
+find . -name $FILE -type f | xargs rm
