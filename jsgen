@@ -3,11 +3,13 @@
 declare -A templates=(
     [react]=react
     [typescript]=typescript
+    [electron]=electron
 )
 
 declare -A repository=(
     [react]="git@github.com:pengfeiw/react-template.git"
     [typescript]="git@github.com:pengfeiw/typescript-template.git"
+    [electron]="git@github.com:pengfeiw/electron-template.git"
 )
 
 template="react"
@@ -25,13 +27,15 @@ function downloadProject() {
 
     echo ">> start download $template project: $projectAddr"
     git clone  $projectAddr $projectName
-    rm -rf ./$projectName/.git*
 
     echo ">> start install dependencies:"
     if [[ -z "$projectName" ]]; then
         projectName=${projectAddr##*/}
         projectName=${projectName%.git}
     fi
+
+    cd $projectName
+    rm -rf .git*
 
     npm install
     
