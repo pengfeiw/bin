@@ -2,13 +2,21 @@
 
 FILE_PATH="$HOME/bin/nrm.conf"
 
-declare -A file_lines=()
+declare -A registryArr=(
+    [npm]="https://registry.npmjs.org/"
+    [yarn]="https://registry.yarnpkg.com/"
+    [tencent]="https://mirrors.cloud.tencent.com/npm/"
+    [cnpm]="https://r.cnpmjs.org/"
+    [taobao]="https://registry.npmmirror.com/"
+    [npmMirror]="https://skimdb.npmjs.com/registry/"
+)
 
 function usage() {
     echo "Usage: nrm [option] [...args]"
     echo "ls                     list registry"
     echo "add <name> <registry>  add a registry"
     echo "delete <name>          delete a registry"
+    echo "use <name>             switch npm registry"
 }
 
 function readList() {
@@ -17,7 +25,7 @@ function readList() {
             while read -r line; do
                 key="${line%% *}"  # 提取空格前的字符串作为下标
                 value="${line#* }"  # 提取空格后的字符串作为值
-                file_lines["$key"]="$value"  # 将键值对存储到关联数组中
+                registryArr["$key"]="$value"  # 将键值对存储到关联数组中
             done < "$FILE_PATH"
         fi
     fi
@@ -25,9 +33,15 @@ function readList() {
 
 function listRegistry() {
     readList
-    for key in "${!file_lines[@]}"; do
-        echo "$key : ${file_lines[$key]}"
+    for key in "${!registryArr[@]}"; do
+        echo "$key : ${registryArr[$key]}"
     done
+
+    echo
+    echo " -------------------------------------------------------"
+    echo "| current npm registry: $(npm config get registry) |"
+    echo " -------------------------------------------------------"
+    echo
 }
 
 addRegistry() {
@@ -36,10 +50,12 @@ addRegistry() {
 
     if [ -n "$1" ] && [ -n "$2" ]; then
         # 用 grep 匹配查找指定的仓库 ^ 表示匹配每行开头，如果匹配成功，需要删掉原来的仓库
-        pattern="^$name\s"
-        grep -q $pattern $FILE_PATH
-        if [ $? -eq 0 ]; then
-            deleteRegistry $name
+        if [ -f "$FILE_PATH" ]; then
+            pattern="^$name\s"
+            grep -q $pattern $FILE_PATH
+            if [ $? -eq 0 ]; then
+                deleteRegistry $name
+            fi
         fi
 
         # 添加仓库
@@ -61,19 +77,40 @@ deleteRegistry() {
         exit 1
     fi
 
-    tempFile="$FILE_PATH.conf"
+    tempFile="$FILE_PATH.temp"
     # 将每行开头匹配 $name 的行过滤掉，将内容存储到 $tempFile 中，然后用 $tempFile 覆盖 $FILE_PATH
-    grep -v $pattern $FILE_PATH > $tempFile && mv $tempFile $FILE_PATH
+    grep -v $pattern $FILE_PATH > $tempFile 
+    mv $tempFile $FILE_PATH
+}
+
+setRegistry() {
+    name=$1
+    pattern="^$name\s"
+    readList
+    address=${registryArr[$name]}
+    if [ -n "$address" ]; then
+        npm config set registry $address
+        echo "Now using $address"
+    else
+        echo "Not found the registry: $name"
+        exit 1
+    fi
 }
 
 main() {
     case $1 in
         ls )
-            listRegistry ;;
+            listRegistry 
+            ;;
         add )
-            addRegistry $2 $3;;
+            addRegistry $2 $3
+            ;;
         delete )
-            deleteRegistry $2;;
+            deleteRegistry $2
+            ;;
+        use )
+            setRegistry $2
+            ;;
         * )
             usage
             exit 1
