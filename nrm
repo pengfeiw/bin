@@ -1,0 +1,88 @@
+#!/bin/bash
+
+FILE_PATH="$HOME/bin/nrm.conf"
+
+declare -A file_lines=()
+
+function usage() {
+    echo "Usage: nrm [option] [...args]"
+    echo "ls                     list registry"
+    echo "add <name> <registry>  add a registry"
+    echo "delete <name>          delete a registry"
+}
+
+function readList() {
+    if [ -f "$FILE_PATH" ]; then
+        if [ -s "$FILE_PATH" ]; then
+            while read -r line; do
+                key="${line%% *}"  # 提取空格前的字符串作为下标
+                value="${line#* }"  # 提取空格后的字符串作为值
+                file_lines["$key"]="$value"  # 将键值对存储到关联数组中
+            done < "$FILE_PATH"
+        fi
+    fi
+}
+
+function listRegistry() {
+    readList
+    for key in "${!file_lines[@]}"; do
+        echo "$key : ${file_lines[$key]}"
+    done
+}
+
+addRegistry() {
+    name=$1
+    address=$2
+
+    if [ -n "$1" ] && [ -n "$2" ]; then
+        # 用 grep 匹配查找指定的仓库 ^ 表示匹配每行开头，如果匹配成功，需要删掉原来的仓库
+        pattern="^$name\s"
+        grep -q $pattern $FILE_PATH
+        if [ $? -eq 0 ]; then
+            deleteRegistry $name
+        fi
+
+        # 添加仓库
+        echo "$name $address" >> $FILE_PATH
+    else
+        usage
+        exit 1
+    fi
+}
+
+deleteRegistry() {
+    name=$1
+    pattern="^$name\s"
+
+    # 用 grep 匹配查找指定的仓库 ^ 表示匹配每行开头，如果匹配不成功指令返回 1，$? 等于 1 表示没有匹配成功
+    grep -q $pattern $FILE_PATH
+    if [ $? -eq 1 ]; then
+        echo "The regsitry $name does not exit."
+        exit 1
+    fi
+
+    tempFile="$FILE_PATH.conf"
+    # 将每行开头匹配 $name 的行过滤掉，将内容存储到 $tempFile 中，然后用 $tempFile 覆盖 $FILE_PATH
+    grep -v $pattern $FILE_PATH > $tempFile && mv $tempFile $FILE_PATH
+}
+
+main() {
+    case $1 in
+        ls )
+            listRegistry ;;
+        add )
+            addRegistry $2 $3;;
+        delete )
+            deleteRegistry $2;;
+        * )
+            usage
+            exit 1
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo "success."
+    fi
+}
+
+main $*
